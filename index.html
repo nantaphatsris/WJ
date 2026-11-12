@@ -40,6 +40,8 @@
       border: 1px solid #354352;
       border-radius: 12px;
       overflow: hidden;
+      touch-action: manipulation;
+      cursor: default;
     }
 
     video { display: none; }
@@ -156,7 +158,7 @@
       <div class="crosshair"></div>
 
       <div class="coordinates">
-        Largest Black Frame:
+        Largest Screen:
         <span id="detectedStatus" style="color: #ff4d4d;">NO</span>
         <br>
         X: <span id="coordX">0.00</span>
@@ -176,10 +178,10 @@
     <div id="status">สถานะ: รอโหลด OpenCV.js</div>
 
     <div class="hint">
-      * ระบบตรวจจับกรอบสี่เหลี่ยมขอบดำที่มีพื้นที่ใหญ่ที่สุดโดยอัตโนมัติ<br>
-      * ไม่ต้องแตะหน้าจอเพื่อเลือกกรอบ<br>
-      * กรอบสีเขียวอมฟ้าคือกรอบใหญ่ที่สุดที่ตรวจพบ<br>
-      * X/Y คือพิกัดจุดกึ่งกลางภาพภายในกรอบ มีค่าระหว่าง 0.00–1.00
+      * ระบบค้นหาขอบจอจากรูปทรงสี่เหลี่ยมที่ใหญ่ที่สุดโดยอัตโนมัติ<br>
+      * กรอบสีส้มคือกรอบอื่นที่ตรวจพบ และกรอบสีเขียวอมฟ้าคือจอที่เลือกอัตโนมัติ<br>
+      * ไม่ต้องแตะหน้าจอเพื่อเลือก กราฟิกภายในจอเปลี่ยนสีได้ตามปกติ<br>
+      * X/Y คือพิกัดจุดกึ่งกลางภาพภายในขอบจอ มีค่าระหว่าง 0.00–1.00
     </div>
   </main>
 
@@ -198,22 +200,16 @@
     let isOpenCvReady = false;
     let isProcessing = false;
 
+    // กรอบจอที่ระบบเลือกอัตโนมัติในเฟรมล่าสุด
     let selectedQuad = null;
-
-    // เก็บตำแหน่งล่าสุดเพื่อช่วยให้กรอบและพิกัดนิ่งขึ้น
     let lostFrames = 0;
     let previousQuadCenter = null;
     let lastGoodXY = { x: 0, y: 0 };
     let smoothedXY = null;
 
-    // ขนาดกรอบขั้นต่ำและสูงสุดเมื่อเทียบกับภาพกล้อง
-    const MIN_AREA_RATIO = 0.008;
+    // กรองเฉพาะกรอบขนาดใหญ่ที่มีสัดส่วนใกล้เคียงหน้าจอ
+    const MIN_AREA_RATIO = 0.025;
     const MAX_AREA_RATIO = 0.92;
-
-    // เกณฑ์ตรวจจับขอบดำ (ปรับได้ตามแสงหน้างาน)
-    const BLACK_THRESHOLD = 105;
-    const MIN_BORDER_DARKNESS = 0.62;
-    const MIN_INSIDE_BRIGHTNESS_GAP = 10;
 
     // ปรับความสมูทของพิกัด X/Y
     // ค่ายิ่งต่ำยิ่งนิ่ง แต่ตอบสนองช้าลง
@@ -410,227 +406,121 @@
       return ordered;
     }
 
-    // ตรวจว่าขอบทั้งสี่ด้านเป็นสีดำ และพื้นที่ด้านในสว่างกว่าขอบ
-    // ช่วยกรองกรอบสี่เหลี่ยมทั่วไปที่ไม่ใช่กรอบดำออก
-    function isBlackBorderRectangle(gray, points, width, height) {
-      const center = centerOf(points);
-      let darkSamples = 0;
-      let totalSamples = 0;
-      let borderBrightness = 0;
-      let insideBrightness = 0;
-      let insideSamples = 0;
-
-      const sampleGray = (x, y) => {
-        const px = Math.max(0, Math.min(width - 1, Math.round(x)));
-        const py = Math.max(0, Math.min(height - 1, Math.round(y)));
-        return gray.ucharAt(py, px);
-      };
-
-      for (let edge = 0; edge < 4; edge++) {
-        const a = points[edge];
-        const b = points[(edge + 1) % 4];
-
-        // เก็บตัวอย่างหลายจุดตลอดแนวขอบ ไม่อ่านเฉพาะมุม
-        for (let step = 2; step <= 8; step++) {
-          const t = step / 10;
-          const edgeX = a.x + (b.x - a.x) * t;
-          const edgeY = a.y + (b.y - a.y) * t;
-
-          // จุดบนแนวขอบและจุดเยื้องเข้าด้านในเล็กน้อย
-          for (const inward of [0.008, 0.018, 0.03, 0.045]) {
-            const x = edgeX + (center.x - edgeX) * inward;
-            const y = edgeY + (center.y - edgeY) * inward;
-            const value = sampleGray(x, y);
-            totalSamples++;
-            borderBrightness += value;
-            if (value <= BLACK_THRESHOLD) darkSamples++;
-          }
-
-          // จุดด้านในกรอบ ใช้เทียบกับความมืดของขอบ
-          const innerX = edgeX + (center.x - edgeX) * 0.16;
-          const innerY = edgeY + (center.y - edgeY) * 0.16;
-          insideBrightness += sampleGray(innerX, innerY);
-          insideSamples++;
-        }
-      }
-
-      if (!totalSamples || !insideSamples) return false;
-
-      const darkRatio = darkSamples / totalSamples;
-      const avgBorder = borderBrightness / totalSamples;
-      const avgInside = insideBrightness / insideSamples;
-
-      return (
-        darkRatio >= MIN_BORDER_DARKNESS &&
-        avgBorder <= BLACK_THRESHOLD &&
-        avgInside >= avgBorder + MIN_INSIDE_BRIGHTNESS_GAP
-      );
-    }
-
-    // ตรวจหารูปสี่เหลี่ยมขอบดำจากภาพกล้อง
+    // ตรวจหาขอบจอจากเส้นขอบจริง ไม่อิงสีของกราฟิกภายในจอ
     function extractCandidates(srcMat, width, height) {
       const candidates = [];
-
-      let gray = new cv.Mat();
-      let blurred = new cv.Mat();
-      let edges = new cv.Mat();
-      let closed = new cv.Mat();
-      let contours = new cv.MatVector();
-      let hierarchy = new cv.Mat();
+      const gray = new cv.Mat();
+      const blurred = new cv.Mat();
+      const edges = new cv.Mat();
+      const closed = new cv.Mat();
+      const contours = new cv.MatVector();
+      const hierarchy = new cv.Mat();
       let kernel = null;
 
       try {
         cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
 
-        cv.GaussianBlur(
-          gray,
-          blurred,
-          new cv.Size(7, 7),
-          0
-        );
-
-        // แยกพิกเซลมืดออกมา เพื่อหาเส้นขอบสีดำโดยตรง
-        cv.threshold(
-          blurred,
-          edges,
-          BLACK_THRESHOLD,
-          255,
-          cv.THRESH_BINARY_INV
-        );
-
-        // เชื่อมส่วนของขอบดำที่ขาดเล็กน้อย
-        kernel = cv.getStructuringElement(
-          cv.MORPH_RECT,
-          new cv.Size(5, 5)
-        );
-
-        cv.morphologyEx(
-          edges,
-          closed,
-          cv.MORPH_CLOSE,
-          kernel
-        );
+        // Canny ค่าค่อนข้างต่ำช่วยเก็บขอบจอที่มีคอนทราสต์ไม่สูง
+        cv.Canny(blurred, edges, 22, 85);
+        kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(9, 9));
+        cv.morphologyEx(edges, closed, cv.MORPH_CLOSE, kernel);
 
         cv.findContours(
-          closed,
-          contours,
-          hierarchy,
-          cv.RETR_LIST,
-          cv.CHAIN_APPROX_SIMPLE
+          closed, contours, hierarchy,
+          cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE
         );
 
         const imageArea = width * height;
-
         for (let i = 0; i < contours.size(); i++) {
           const contour = contours.get(i);
           const approx = new cv.Mat();
-
           try {
-            const area = Math.abs(
-              cv.contourArea(contour)
-            );
-
-            const ratio = area / imageArea;
-
-            if (
-              ratio < MIN_AREA_RATIO ||
-              ratio > MAX_AREA_RATIO
-            ) {
-              continue;
-            }
+            const contourArea = Math.abs(cv.contourArea(contour));
+            const areaRatio = contourArea / imageArea;
+            if (areaRatio < MIN_AREA_RATIO || areaRatio > MAX_AREA_RATIO) continue;
 
             const perimeter = cv.arcLength(contour, true);
-
-            cv.approxPolyDP(
-              contour,
-              approx,
-              0.03 * perimeter,
-              true
-            );
-
-            if (
-              approx.rows !== 4 ||
-              !cv.isContourConvex(approx)
-            ) {
-              continue;
+            // ลองความละเอียดการประมาณหลายระดับ ลดโอกาสพลาดเมื่อขอบไม่คม
+            let foundQuad = false;
+            for (const epsilonRatio of [0.018, 0.025, 0.035, 0.045]) {
+              cv.approxPolyDP(contour, approx, epsilonRatio * perimeter, true);
+              if (approx.rows === 4 && cv.isContourConvex(approx)) {
+                foundQuad = true;
+                break;
+              }
             }
+            if (!foundQuad) continue;
 
             const points = [];
-
             for (let j = 0; j < 4; j++) {
               const ptr = approx.intPtr(j, 0);
-
-              points.push({
-                x: ptr[0],
-                y: ptr[1]
-              });
+              points.push({ x: ptr[0], y: ptr[1] });
             }
-
             const ordered = orderQuad(points);
-            const areaQuad = polygonArea(ordered);
-
-            if (areaQuad < MIN_AREA_RATIO * imageArea) {
-              continue;
-            }
-
-            // ต้องเป็นสี่เหลี่ยมที่มีขอบดำจริง ไม่ใช่แค่ขอบวัตถุทั่วไป
-            if (!isBlackBorderRectangle(gray, ordered, width, height)) {
-              continue;
-            }
+            const area = polygonArea(ordered);
+            if (area < imageArea * MIN_AREA_RATIO) continue;
 
             const xs = ordered.map(p => p.x);
             const ys = ordered.map(p => p.y);
+            const boxW = Math.max(...xs) - Math.min(...xs);
+            const boxH = Math.max(...ys) - Math.min(...ys);
+            if (boxW < width * 0.18 || boxH < height * 0.10) continue;
 
-            const boxW =
-              Math.max(...xs) - Math.min(...xs);
+            const aspect = boxW / Math.max(boxH, 1);
+            if (aspect < 1.10 || aspect > 2.80) continue;
 
-            const boxH =
-              Math.max(...ys) - Math.min(...ys);
-
-            if (
-              boxW < width * 0.12 ||
-              boxH < height * 0.07
-            ) {
-              continue;
+            // กรองรูปทรงที่ไม่คล้ายสี่เหลี่ยมผืนผ้าด้วยมุมทั้งสี่
+            const angles = [];
+            for (let k = 0; k < 4; k++) {
+              const a = ordered[(k + 3) % 4];
+              const b = ordered[k];
+              const c = ordered[(k + 1) % 4];
+              const v1 = { x: a.x - b.x, y: a.y - b.y };
+              const v2 = { x: c.x - b.x, y: c.y - b.y };
+              const denom = Math.hypot(v1.x, v1.y) * Math.hypot(v2.x, v2.y);
+              if (!denom) { angles.push(0); continue; }
+              const cos = Math.max(-1, Math.min(1, (v1.x*v2.x + v1.y*v2.y) / denom));
+              angles.push(Math.acos(cos) * 180 / Math.PI);
             }
-
-            const ratioWH = boxW / Math.max(boxH, 1);
-
-            if (ratioWH < 0.75 || ratioWH > 5.5) {
-              continue;
-            }
+            if (angles.some(a => a < 48 || a > 132)) continue;
 
             const center = centerOf(ordered);
-
-            candidates.push({
-              points: ordered,
-              area: areaQuad,
-              center
-            });
+            candidates.push({ points: ordered, area, center, aspect });
           } finally {
             approx.delete();
             contour.delete();
           }
         }
       } finally {
-        gray.delete();
-        blurred.delete();
-        edges.delete();
-        closed.delete();
-        contours.delete();
-        hierarchy.delete();
-
+        gray.delete(); blurred.delete(); edges.delete(); closed.delete();
+        contours.delete(); hierarchy.delete();
         if (kernel) kernel.delete();
       }
 
-      return candidates;
+      // ตัดกรอบซ้ำที่เกิดจากขอบด้านใน/ด้านนอกของเส้นเดียวกัน
+      candidates.sort((a, b) => b.area - a.area);
+      const unique = [];
+      for (const candidate of candidates) {
+        const duplicate = unique.some(existing => {
+          const distance = Math.hypot(
+            candidate.center.x - existing.center.x,
+            candidate.center.y - existing.center.y
+          );
+          const areaScale = candidate.area / existing.area;
+          return distance < Math.min(width, height) * 0.035 && areaScale > 0.72;
+        });
+        if (!duplicate) unique.push(candidate);
+      }
+      return unique;
     }
 
-    // เลือกกรอบขอบดำที่มีพื้นที่มากที่สุดในทุกเฟรมโดยอัตโนมัติ
-    // ไม่ต้องแตะหน้าจอ และไม่ล็อกกรอบเดิมถ้ามีกรอบที่ใหญ่กว่าเข้ามา
+    // เลือกกรอบที่ใหญ่ที่สุดอัตโนมัติทุกเฟรม ไม่ต้องแตะและไม่ล็อกถาวร
     function chooseCandidate(candidates) {
       if (!candidates.length) return null;
-      return candidates.slice().sort((a, b) => b.area - a.area)[0];
+      return candidates.reduce((largest, item) =>
+        item.area > largest.area ? item : largest
+      );
     }
 
     // คำนวณพิกัดจุดกลางภาพในกรอบที่เลือก
@@ -771,31 +661,23 @@
           );
 
           displayCoordinates(xy.x, xy.y, true);
+
+          // ส่งพิกัด X/Y ที่คำนวณได้ไป Node.js → OSC → TouchDesigner
           sendXYToTouchDesigner(xy.x, xy.y);
 
           status.textContent =
-            "สถานะ: ตรวจพบกรอบขอบดำที่ใหญ่ที่สุดแล้ว";
+            "สถานะ: ตรวจพบขอบจอที่ใหญ่ที่สุดอัตโนมัติ";
 
-          drawFrameOverlays(
-            srcMat,
-            [],
-            selectedQuad
-          );
+          drawFrameOverlays(srcMat, candidates, selectedQuad);
         } else {
           lostFrames++;
           selectedQuad = null;
           previousQuadCenter = null;
           smoothedXY = null;
-
           displayCoordinates(0, 0, false);
           status.textContent =
-            "สถานะ: กำลังค้นหาสี่เหลี่ยมขอบดำที่ใหญ่ที่สุด...";
-
-          drawFrameOverlays(
-            srcMat,
-            candidates,
-            null
-          );
+            "สถานะ: ยังไม่พบขอบจอ ลองปรับมุมกล้องหรือแสง";
+          drawFrameOverlays(srcMat, candidates, null);
         }
 
         cv.imshow(canvasOutput, srcMat);
@@ -904,9 +786,11 @@
         stream = null;
         camera.srcObject = null;
 
+        // รีเซ็ตกรอบอัตโนมัติเมื่อปิดกล้อง
         selectedQuad = null;
         previousQuadCenter = null;
         smoothedXY = null;
+        lostFrames = 0;
         displayCoordinates(0, 0, false);
 
         ctx.clearRect(
@@ -946,7 +830,7 @@
         button.textContent = "ปิดกล้อง";
 
         status.textContent =
-          "สถานะ: กล้องทำงานแล้ว กำลังหากรอบขอบดำที่ใหญ่ที่สุด";
+          "สถานะ: กล้องทำงานแล้ว กำลังค้นหาขอบจอที่ใหญ่ที่สุดอัตโนมัติ";
 
         requestAnimationFrame(processVideo);
       } catch (error) {
