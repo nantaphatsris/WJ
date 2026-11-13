@@ -2,137 +2,170 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Light The Star</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Light The Star</title>
 
-  <style>
-    * { box-sizing: border-box; }
+<style>
+* { box-sizing: border-box; }
 
-    body {
-      margin: 0;
-      background: #090d12;
-      color: #edf2f7;
-      font-family: Arial, sans-serif;
-    }
+body {
+  margin: 0;
+  background: #090d12;
+  color: #edf2f7;
+  font-family: Arial, sans-serif;
+}
 
-    header {
-      padding: 20px;
-      border-bottom: 1px solid #26313d;
-    }
+header {
+  padding: 20px;
+  border-bottom: 1px solid #26313d;
+}
 
-    h1 { font-size: 18px; margin: 0; }
+h1 { font-size: 18px; margin: 0; }
 
-    main {
-      max-width: 600px;
-      margin: auto;
-      padding: 16px;
-    }
+main {
+  max-width: 600px;
+  margin: auto;
+  padding: 16px;
+}
 
-    .camera-view {
-      position: relative;
-      width: 100%;
-      aspect-ratio: 3 / 4;
-      background: #030609;
-      border: 1px solid #354352;
-      border-radius: 12px;
-      overflow: hidden;
-    }
+.camera-view {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #030609;
+  border: 1px solid #354352;
+  border-radius: 12px;
+  overflow: hidden;
+}
 
-    video { display: none; }
+video { display: none; }
 
-    canvas#canvasOutput {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
+canvas#canvasOutput {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 
-    .crosshair {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border: 2px solid #6000fb;
-      border-radius: 50%;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 2;
-    }
+.crosshair {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #6000fb;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
 
-    .crosshair::before {
-      content: "";
-      position: absolute;
-      width: 5px;
-      height: 5px;
-      background: #0bf4ec;
-      border-radius: 50%;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-    }
+.crosshair::before {
+  content: "";
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: #0bf4ec;
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
 
-    .coordinates {
-      position: absolute;
-      left: 12px;
-      bottom: 12px;
-      padding: 8px 10px;
-      background: rgba(0,0,0,.8);
-      color: #0bf4ec;
-      font-size: 13px;
-      font-family: monospace;
-      line-height: 1.8;
-      border: 1px solid #26313d;
-      border-radius: 6px;
-      pointer-events: none;
-      z-index: 3;
-    }
+.coordinates {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,.8);
+  color: #0bf4ec;
+  font-size: 13px;
+  font-family: monospace;
+  line-height: 1.8;
+  border: 1px solid #26313d;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 3;
+}
 
-    .controls {
-      margin-top: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
+.controls {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 
-    button {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 8px;
-      background: #0bf4ec;
-      color: #10241a;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-    }
+button {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 8px;
+  background: #0bf4ec;
+  color: #10241a;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-    button:disabled {
-      background: #354352;
-      color: #888;
-      cursor: not-allowed;
-    }
+button:disabled {
+  background: #354352;
+  color: #888;
+  cursor: not-allowed;
+}
 
-    #status {
-      color: #9eacbd;
-      font-size: 13px;
-      margin-top: 12px;
-      line-height: 1.6;
-    }
+#runAnimation {
+  display: none;
+  width: 66px;
+  height: 66px;
+  padding: 0;
+  margin: 8px auto;
+  border: 2px solid #fff0b0;
+  border-radius: 50%;
+  background: #ffcf5a;
+  color: #231900;
+  font-size: 34px;
+  line-height: 1;
+  box-shadow: 0 0 18px rgba(255,207,90,.45);
+  animation: fingerPulse 1.2s ease-in-out infinite;
+}
 
-    .hint {
-      color: #9eacbd;
-      font-size: 12px;
-      line-height: 1.7;
-      margin-top: 10px;
-    }
-  </style>
+#runAnimation:disabled {
+  opacity: .5;
+  animation: none;
+}
 
-  <script async
-    src="https://docs.opencv.org/4.x/opencv.js"
-    onload="onOpenCvReady();">
-  </script>
+@keyframes fingerPulse {
+  0%,100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(255,207,90,.35);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 24px rgba(255,207,90,.8);
+  }
+}
+
+#status {
+  color: #9eacbd;
+  font-size: 13px;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
+.hint {
+  color: #9eacbd;
+  font-size: 12px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+</style>
+
+<script async
+  src="https://docs.opencv.org/4.x/opencv.js"
+  onload="onOpenCvReady();">
+</script>
 </head>
 
 <body>
@@ -144,7 +177,6 @@
   <div class="camera-view" id="cameraView">
     <video id="camera" autoplay playsinline muted></video>
     <canvas id="canvasOutput"></canvas>
-
     <div class="crosshair"></div>
 
     <div class="coordinates">
@@ -171,8 +203,10 @@
     </div>
 
     <button id="runAnimation"
-      style="display:none;background:#ffcf5a;color:#231900;">
-      ✨ รันอนิเมชันกลุ่มดาว
+      type="button"
+      title="เล่นอนิเมชัน"
+      aria-label="เล่นอนิเมชัน">
+      👆
     </button>
   </div>
 
@@ -182,8 +216,8 @@
     * เริ่มต้นด้วยการค้นหาขอบจอและล็อกตำแหน่งเพียงครั้งเดียว<br>
     * หลังล็อกจอ ระบบจะติดตามตำแหน่งดาวเพื่อควบคุมวงกลม<br>
     * ขยับกล้องเพื่อเคลื่อนวงกลมใน TouchDesigner<br>
-    * หากติดตามภาพไม่ได้ชั่วคราว ระบบจะค้างพิกัดล่าสุด<br>
-    * ปิดและเปิดกล้องใหม่เพื่อค้นหาขอบจออีกครั้ง
+    * เมื่ออยู่ในพื้นที่กลุ่มดาวครบ 3 วินาที ปุ่มรูปนิ้วจะปรากฏ<br>
+    * หากออกจากพื้นที่ก่อนครบเวลา ระบบจะเริ่มนับใหม่เมื่อกลับเข้าไป
   </div>
 </main>
 
@@ -208,38 +242,143 @@ let isProcessing = false;
 // SCREEN LOCK + FEATURE TRACKING
 // ========================================
 
-// ล็อกขอบจอครั้งเดียว
 let screenLocked = false;
 let lockedQuad = null;
-
-// ภาพก่อนหน้าและจุด feature ก่อนหน้า
 let previousGray = null;
 let previousPoints = null;
 
-// จุดอ้างอิงกลางจอ ณ ตอนล็อก
 let anchorX = 0.5;
 let anchorY = 0.5;
 
-// พิกัดล่าสุด
 let lastGoodXY = { x: 0.5, y: 0.5 };
 let smoothedXY = { x: 0.5, y: 0.5 };
 
-// จำนวนเฟรมที่ติดตามไม่ได้
 let lostFrames = 0;
 
-// ค่าปรับความนุ่มนวล
 const XY_SMOOTHING_ALPHA = 0.22;
 const XY_DEADBAND = 0.0015;
 
-// Optical Flow
 const MAX_FEATURES = 250;
 const MIN_FEATURES = 8;
 const MIN_INLIERS = 8;
 const MAX_TRACK_ERROR = 35;
 
-// ขอบจอครั้งแรก
 const MIN_AREA_RATIO = 0.025;
 const MAX_AREA_RATIO = 0.92;
+
+// ========================================
+// CONSTELLATION ZONE SETTINGS
+// ========================================
+
+// ต้องอยู่ในเขตกลุ่มดาวครบ 3 วินาที
+const DISCOVERY_TIME = 3000;
+
+// ตัวอย่างพื้นที่ 12 กลุ่มดาว
+// พิกัด X/Y อยู่ในช่วง 0 ถึง 1
+// X = ซ้ายไปขวา
+// Y = บนลงล่าง
+//
+// ตอนนี้แบ่งหน้าจอเป็น 4 คอลัมน์ x 3 แถว
+// ต้องปรับพิกัดให้ตรงกับตำแหน่งกลุ่มดาวจริงภายหลัง
+
+const CONSTELLATION_ZONES = [
+  { id: "aries",    name: "Aries",    x1: 0.00, y1: 0.00, x2: 0.25, y2: 0.333 },
+  { id: "taurus",   name: "Taurus",   x1: 0.25, y1: 0.00, x2: 0.50, y2: 0.333 },
+  { id: "gemini",   name: "Gemini",   x1: 0.50, y1: 0.00, x2: 0.75, y2: 0.333 },
+  { id: "cancer",   name: "Cancer",   x1: 0.75, y1: 0.00, x2: 1.00, y2: 0.333 },
+
+  { id: "leo",      name: "Leo",      x1: 0.00, y1: 0.333, x2: 0.25, y2: 0.666 },
+  { id: "virgo",    name: "Virgo",    x1: 0.25, y1: 0.333, x2: 0.50, y2: 0.666 },
+  { id: "libra",    name: "Libra",    x1: 0.50, y1: 0.333, x2: 0.75, y2: 0.666 },
+  { id: "scorpio",  name: "Scorpio",  x1: 0.75, y1: 0.333, x2: 1.00, y2: 0.666 },
+
+  { id: "sagittarius", name: "Sagittarius", x1: 0.00, y1: 0.666, x2: 0.25, y2: 1.00 },
+  { id: "capricorn",   name: "Capricorn",   x1: 0.25, y1: 0.666, x2: 0.50, y2: 1.00 },
+  { id: "aquarius",    name: "Aquarius",    x1: 0.50, y1: 0.666, x2: 0.75, y2: 1.00 },
+  { id: "pisces",      name: "Pisces",      x1: 0.75, y1: 0.666, x2: 1.00, y2: 1.00 }
+];
+
+let currentZone = null;
+let zoneStartTime = null;
+let discoveredZone = null;
+let waitingForExit = false;
+let discoveryReady = false;
+
+function isInsideZone(x, y, zone) {
+  return (
+    x >= zone.x1 &&
+    x <= zone.x2 &&
+    y >= zone.y1 &&
+    y <= zone.y2
+  );
+}
+
+function findZone(x, y) {
+  return CONSTELLATION_ZONES.find(zone =>
+    isInsideZone(x, y, zone)
+  ) || null;
+}
+
+function hideDiscoveryButton() {
+  runAnimationButton.style.display = "none";
+  discoveryReady = false;
+}
+
+function resetZoneDetection() {
+  currentZone = null;
+  zoneStartTime = null;
+  discoveredZone = null;
+  waitingForExit = false;
+  hideDiscoveryButton();
+}
+
+function updateZoneDetection(x, y) {
+  const zone = findZone(x, y);
+
+  // ผู้เล่นออกจากเขต
+  if (!zone) {
+    currentZone = null;
+    zoneStartTime = null;
+    discoveredZone = null;
+    waitingForExit = false;
+
+    hideDiscoveryButton();
+    return;
+  }
+
+  // หลังจากกดปุ่มแล้ว ต้องออกจากเขตก่อน
+  // จึงจะเริ่มค้นพบกลุ่มดาวใหม่ได้
+  if (waitingForExit) return;
+
+  // เปลี่ยนไปยังเขตกลุ่มดาวอื่น
+  if (!currentZone || currentZone.id !== zone.id) {
+    currentZone = zone;
+    zoneStartTime = performance.now();
+    discoveredZone = null;
+    hideDiscoveryButton();
+
+    status.textContent =
+      "กำลังค้นพบกลุ่มดาว " + zone.name + "...";
+
+    return;
+  }
+
+  // ยังไม่ครบ 3 วินาที
+  if (!discoveryReady) {
+    const elapsed = performance.now() - zoneStartTime;
+
+    if (elapsed >= DISCOVERY_TIME) {
+      discoveredZone = zone;
+      discoveryReady = true;
+
+      runAnimationButton.style.display = "block";
+      runAnimationButton.disabled = false;
+
+      status.textContent =
+        "ค้นพบกลุ่มดาว " + zone.name + " แล้ว!";
+    }
+  }
+}
 
 // ========================================
 // OPENCV READY
@@ -283,15 +422,15 @@ function displayCoordinates(x, y) {
 }
 
 // ========================================
-// WEBSOCKET - KEEP ORIGINAL PIPELINE
+// WEBSOCKET
 // ========================================
 
-const WS_ENDPOINT = "wss://collector-hereby-reef-sing.trycloudflare.com";
+const WS_ENDPOINT =
+  "wss://collector-hereby-reef-sing.trycloudflare.com";
 
 let socket = null;
 let playerId = null;
 let lastXYSendTime = 0;
-let constellationComplete = false;
 
 function connectWebSocket() {
   if (socket &&
@@ -331,6 +470,7 @@ function connectWebSocket() {
     playerId = null;
     playerInfo.textContent =
       "เชื่อมต่อหลุด กำลัง reconnect...";
+
     setTimeout(connectWebSocket, 1500);
   });
 
@@ -345,6 +485,7 @@ function wsSend(data) {
     socket.send(JSON.stringify(data));
     return true;
   }
+
   return false;
 }
 
@@ -369,16 +510,12 @@ function sendXYToTouchDesigner(x, y) {
   });
 }
 
-function markConstellationComplete() {
-  constellationComplete = true;
-  runAnimationButton.style.display = "block";
-  runAnimationButton.disabled = false;
-  status.textContent =
-    "กลุ่มดาวครบแล้ว! กดปุ่มเพื่อรันอนิเมชัน";
-}
+// ========================================
+// ANIMATION BUTTON
+// ========================================
 
 runAnimationButton.addEventListener("click", () => {
-  if (!constellationComplete) return;
+  if (!discoveryReady || !discoveredZone) return;
 
   if (!wsSend({ type: "runAnimation" })) {
     status.textContent =
@@ -386,10 +523,19 @@ runAnimationButton.addEventListener("click", () => {
     return;
   }
 
+  const name = discoveredZone.name;
+
   status.textContent =
-    "ส่งคำสั่งรันอนิเมชันไป TouchDesigner แล้ว";
+    "ส่งคำสั่งเล่นอนิเมชัน " + name + " ไป TouchDesigner แล้ว";
+
+  // ซ่อนปุ่มหลังจากกด
+  hideDiscoveryButton();
+
+  // ต้องออกจากพื้นที่ก่อนจึงจะค้นพบใหม่ได้
+  waitingForExit = true;
 });
 
+// เริ่มเชื่อมต่อ
 connectWebSocket();
 
 // ========================================
@@ -429,6 +575,7 @@ function orderQuad(points) {
 
   sorted.forEach((p, i) => {
     const sum = p.x + p.y;
+
     if (sum < minSum) {
       minSum = sum;
       start = i;
@@ -461,7 +608,7 @@ function orderQuad(points) {
 }
 
 // ========================================
-// FIRST SCREEN DETECTION ONLY
+// FIRST SCREEN DETECTION
 // ========================================
 
 function extractCandidates(srcMat, width, height) {
@@ -574,7 +721,7 @@ function extractCandidates(srcMat, width, height) {
 }
 
 // ========================================
-// FEATURE MASK INSIDE SCREEN
+// FEATURE MASK
 // ========================================
 
 function createScreenMask(gray, quad) {
@@ -635,7 +782,7 @@ function detectFeatures(gray, quad, maxCount = MAX_FEATURES) {
 }
 
 // ========================================
-// INITIALIZE TRACKING AFTER SCREEN LOCK
+// INITIALIZE TRACKING
 // ========================================
 
 function initializeTracking(gray, quad) {
@@ -650,7 +797,6 @@ function initializeTracking(gray, quad) {
     return false;
   }
 
-  // คำนวณตำแหน่งกึ่งกลางภาพกล้องบนหน้าจอ
   const center = mapCameraCenter(quad);
 
   if (!center) return false;
@@ -673,7 +819,7 @@ function initializeTracking(gray, quad) {
 }
 
 // ========================================
-// MAP CAMERA CENTER TO SCREEN
+// MAP CAMERA CENTER
 // ========================================
 
 function mapCameraCenter(quad) {
@@ -766,10 +912,9 @@ function trackScreen(gray) {
   let newInliers = null;
   let quadMat = null;
   let movedQuadMat = null;
+  let freshPoints = null;
 
   try {
-    // LK Optical Flow:
-    // ติดตามจุดเดิมจากเฟรมก่อนหน้าไปยังเฟรมปัจจุบัน
     const winSize = new cv.Size(31, 31);
 
     cv.calcOpticalFlowPyrLK(
@@ -813,9 +958,7 @@ function trackScreen(gray) {
 
     const count = srcList.length / 2;
 
-    if (count < MIN_INLIERS) {
-      return false;
-    }
+    if (count < MIN_INLIERS) return false;
 
     oldInliers = cv.matFromArray(
       count, 1, cv.CV_32FC2, srcList
@@ -825,7 +968,6 @@ function trackScreen(gray) {
       count, 1, cv.CV_32FC2, dstList
     );
 
-    // หา Homography ระหว่างภาพก่อนหน้าและปัจจุบัน
     inlierMask = new cv.Mat();
 
     homography = cv.findHomography(
@@ -847,7 +989,6 @@ function trackScreen(gray) {
 
     if (inlierCount < MIN_INLIERS) return false;
 
-    // อัปเดตตำแหน่งจอจากการเคลื่อนที่ของภาพดาว
     quadMat = cv.matFromArray(
       4, 1, cv.CV_32FC2,
       lockedQuad.flatMap(p => [p.x, p.y])
@@ -879,16 +1020,12 @@ function trackScreen(gray) {
       return false;
     }
 
-    // ปรับตำแหน่งกรอบจอในพิกัดกล้อง
     lockedQuad = newQuad;
 
-    // คำนวณตำแหน่งจุดกลางภาพกล้องบนหน้าจอ
     const currentCenter = mapCameraCenter(lockedQuad);
 
     if (!currentCenter) return false;
 
-    // ตอนล็อกจอเริ่มที่ 0.50, 0.50
-    // เมื่อขยับกล้อง จะเคลื่อนตามระยะที่เปลี่ยนไป
     const rawX = 0.5 + (currentCenter.x - anchorX);
     const rawY = 0.5 + (currentCenter.y - anchorY);
 
@@ -910,7 +1047,6 @@ function trackScreen(gray) {
 
     lastGoodXY = { ...smoothedXY };
 
-    // เตรียมจุดสำหรับเฟรมถัดไป
     const tracked = [];
 
     for (let i = 0; i < statuses.length; i++) {
@@ -926,9 +1062,7 @@ function trackScreen(gray) {
       }
     }
 
-    // เติมจุด feature ใหม่ในพื้นที่จอ
-    // เพื่อทดแทนดาวที่หายไปจากการกระพริบ
-    const freshPoints = detectFeatures(gray, lockedQuad, MAX_FEATURES);
+    freshPoints = detectFeatures(gray, lockedQuad, MAX_FEATURES);
     const fresh = freshPoints.data32F;
 
     for (let i = 0; i < fresh.length; i += 2) {
@@ -952,8 +1086,6 @@ function trackScreen(gray) {
       if (!tooClose) tracked.push(x2, y2);
     }
 
-    freshPoints.delete();
-
     if (tracked.length / 2 >= MIN_FEATURES) {
       const replacement = cv.matFromArray(
         tracked.length / 2,
@@ -968,7 +1100,6 @@ function trackScreen(gray) {
       return false;
     }
 
-    // เฟรมปัจจุบันกลายเป็นเฟรมก่อนหน้าสำหรับรอบถัดไป
     previousGray.delete();
     previousGray = gray.clone();
 
@@ -976,6 +1107,9 @@ function trackScreen(gray) {
 
     displayCoordinates(lastGoodXY.x, lastGoodXY.y);
     sendXYToTouchDesigner(lastGoodXY.x, lastGoodXY.y);
+
+    // ตรวจจับเขตกลุ่มดาวจาก X/Y ล่าสุด
+    updateZoneDetection(lastGoodXY.x, lastGoodXY.y);
 
     return true;
 
@@ -993,7 +1127,8 @@ function trackScreen(gray) {
       oldInliers,
       newInliers,
       quadMat,
-      movedQuadMat
+      movedQuadMat,
+      freshPoints
     ].forEach(m => {
       if (m) m.delete();
     });
@@ -1074,10 +1209,6 @@ function processVideo() {
 
     cv.cvtColor(srcMat, gray, cv.COLOR_RGBA2GRAY);
 
-    // ====================================
-    // PHASE 1: ค้นหาขอบจอเพียงครั้งเดียว
-    // ====================================
-
     if (!screenLocked) {
       const candidates = extractCandidates(
         srcMat,
@@ -1103,7 +1234,7 @@ function processVideo() {
           setTrackingStatus(true);
 
           status.textContent =
-            "ล็อกจอสำเร็จ! ตอนนี้ขยับกล้องเพื่อควบคุมวงกลมได้";
+            "ล็อกจอสำเร็จ! ขยับกล้องเพื่อควบคุมวงกลมได้";
 
           console.log("SCREEN LOCKED");
         } else {
@@ -1116,27 +1247,24 @@ function processVideo() {
           "กำลังค้นหาขอบจอ... กรุณาจัดกล้องให้เห็นจอครบทั้ง 4 มุม";
       }
 
-      // วาดกรอบตอนค้นหาครั้งแรก
       if (!screenLocked) {
         candidates.forEach(c => {
           drawPolygon(srcMat, c.points, "orange", 2);
         });
       }
-    }
 
-    // ====================================
-    // PHASE 2: ติดตามภาพดาว ไม่ตรวจขอบจออีก
-    // ====================================
-
-    else {
+    } else {
       const tracked = trackScreen(gray);
 
       if (tracked) {
         setTargetStatus(true);
         setTrackingStatus(true);
 
-        status.textContent =
-          "ล็อกจอแล้ว / กำลังติดตามภาพดาวและควบคุมกล้อง";
+        // สถานะการค้นพบถูกอัปเดตใน updateZoneDetection()
+        if (!discoveryReady && !waitingForExit) {
+          status.textContent =
+            "ล็อกจอแล้ว / กำลังติดตามภาพดาว";
+        }
 
       } else {
         lostFrames++;
@@ -1144,8 +1272,11 @@ function processVideo() {
         setTargetStatus(true);
         setTrackingStatus(false);
 
-        // ไม่เปลี่ยนพิกัดเมื่อ tracking หาย
-        // ไม่ส่ง 0,0 และไม่ค้นหาขอบจอใหม่
+        // หากภาพติดตามหาย ให้หยุดการนับเวลา
+        currentZone = null;
+        zoneStartTime = null;
+        hideDiscoveryButton();
+
         displayCoordinates(
           lastGoodXY.x,
           lastGoodXY.y
@@ -1153,10 +1284,8 @@ function processVideo() {
 
         status.textContent =
           "ล็อกจออยู่ / ภาพติดตามขาดชั่วคราว กำลังคงพิกัดล่าสุด";
-
       }
 
-      // วาดกรอบตำแหน่งล่าสุด ไม่ค้นหาขอบใหม่
       if (lockedQuad) {
         drawPolygon(srcMat, lockedQuad, "cyan", 3);
       }
@@ -1203,6 +1332,8 @@ function resetTracker() {
 
   lastGoodXY = { x: 0.5, y: 0.5 };
   smoothedXY = { x: 0.5, y: 0.5 };
+
+  resetZoneDetection();
 
   setTargetStatus(false);
   setTrackingStatus(false);
